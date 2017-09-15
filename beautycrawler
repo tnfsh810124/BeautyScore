@@ -1,0 +1,46 @@
+import re
+import requests
+import time
+from time import sleep
+from bs4 import BeautifulSoup
+from urllib.request import urlretrieve
+from PIL import Image
+
+indexfrom=2000  #自訂從哪個index開始抓
+indexto=2001    #抓到哪結束
+for page in range(indexfrom,indexto):       
+    url='https://www.ptt.cc/bbs/beauty/index{}.html'.format(page) #產生url去尋找貼文的url
+    req=requests.get(url).text    #抓取網頁內容再轉text
+    sp=BeautifulSoup(req)                                         
+    target=sp.select('div.r-ent') #找所有標籤為div且class='r-ent' 
+    #type(target)=list                              
+    for k in range(0,len(target)):
+        if target[k].select('span')==[]:   #無推文數則進行下一次迴圈
+            continue
+        else:
+            comments = target[k].select('span')[0].text  #取得推文數  
+                       #target[k].select('span')為list
+                       #target[k].select('span')[0].text   .text去除標籤取得標籤的內容
+            tgurl = 'https://www.ptt.cc'+target[k].select('a')[0]['href']  #取得a標籤href的值並產生貼文的url
+            article = target[k].select('a')[0].text  #取得標題名稱
+            tgreq = requests.get(tgurl).text   
+            tgsp = BeautifulSoup(tgreq)
+            tgimglist = tgsp.findAll('a', {'href':re.compile('http:\/\/i\.imgur\.com\/.*')}) #找所有圖片下載的網址
+            if tgimglist==[]: #判斷貼文內有無圖片網址
+                continue
+            if article.find('[正妹]')!=0: #只抓標題含有[正妹]
+                continue
+
+            for p in range(0,len(tgimglist)): #下載照片
+                imgurl=tgimglist[p].text
+                try: 
+                    urlretrieve(imgurl,'/Users/msize/Downloads/test/{}_{}_{}.jpg'.format(article,p+1,comments))
+                    #urlretrieve(url,path) 下載
+                    im=Image.open('/Users/msize/Downloads/test/{}_{}_{}.jpg'.format(article,p+1,comments))#讀取圖片
+                    im=im.resize((600,600)) #修改圖片大小
+                    im.save('/Users/msize/Downloads/test/{}_{}_{}.jpg'.format(article,p+1,comments))#圖片存擋
+                    im.close()   
+                except:
+                    print('{}_{}_{}.jpg 下載失敗!'.format(article,p+1,comments))
+                
+            time.sleep(1) #暫停一秒 
